@@ -609,10 +609,10 @@ input:focus{border-color:var(--cyan);}
 </template>
 
 <!-- Firebase SDK -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, get, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script>
 // ════════════════════════════════════════════════
 //  🔥 FIREBASE CONFIG — ضع إعداداتك هنا
 // ════════════════════════════════════════════════
@@ -625,54 +625,49 @@ const firebaseConfig = {
   messagingSenderId: "REPLACE_WITH_SENDER_ID",
   appId:             "REPLACE_WITH_APP_ID"
 };
-
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 // ════════════════════════════════════════════════
 //  STATE
 // ════════════════════════════════════════════════
-let currentUser = localStorage.getItem('arena_username') || null;
+let currentUser   = localStorage.getItem('arena_username') || null;
 let lbCurrentGame = 'all';
-let lbData = {};       // gameId -> { username: {name,score} }
-let totalPlayers = 0;
-let myTotalScore = 0;
-let myTotalRank  = null;
+let lbData        = {};
+let totalPlayers  = 0;
+let myTotalScore  = 0;
+let myTotalRank   = null;
 
 // ════════════════════════════════════════════════
-//  USERNAME SYSTEM
+//  USERNAME
 // ════════════════════════════════════════════════
-async function submitUsername(){
-  const inp = document.getElementById('unInput');
-  const err = document.getElementById('unErr');
-  const btn = document.getElementById('unSubmitBtn');
+function submitUsername(){
+  const inp  = document.getElementById('unInput');
+  const err  = document.getElementById('unErr');
+  const btn  = document.getElementById('unSubmitBtn');
   const name = inp.value.trim();
-  if(!name){ err.textContent='❗ أدخل اسماً أولاً'; return; }
-  if(name.length < 2){ err.textContent='❗ الاسم قصير جداً'; return; }
-  if(name.length > 20){ err.textContent='❗ الاسم طويل جداً'; return; }
-
-  btn.disabled = true;
+  if(!name)         { err.textContent='❗ أدخل اسماً أولاً'; return; }
+  if(name.length<2) { err.textContent='❗ الاسم قصير جداً';  return; }
+  if(name.length>20){ err.textContent='❗ الاسم طويل جداً';  return; }
+  btn.disabled    = true;
   btn.textContent = '⏳ جاري التحقق...';
   err.textContent = '';
-
-  try {
-    const snap = await get(ref(db, 'users/' + name));
+  db.ref('users/'+name).once('value').then(snap=>{
     if(snap.exists()){
-      err.textContent = '❗ هذا الاسم مأخوذ! جرب اسماً آخر';
-      btn.disabled = false;
-      btn.textContent = '🚀 ابدأ اللعب';
-      return;
+      err.textContent    = '❗ هذا الاسم مأخوذ! جرب اسماً آخر';
+      btn.disabled       = false;
+      btn.textContent    = '🚀 ابدأ اللعب';
+    } else {
+      db.ref('users/'+name).set({ joinedAt: Date.now() }).then(()=>{
+        localStorage.setItem('arena_username', name);
+        activateUser(name);
+      });
     }
-    await set(ref(db, 'users/' + name), { joinedAt: Date.now() });
+  }).catch(()=>{
     localStorage.setItem('arena_username', name);
     activateUser(name);
-  } catch(e){
-    // offline fallback
-    localStorage.setItem('arena_username', name);
-    activateUser(name);
-  }
+  });
 }
-window.submitUsername = submitUsername;
 
 function activateUser(name){
   currentUser = name;
@@ -681,63 +676,56 @@ function activateUser(name){
   startListeners();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', ()=>{
   const inp = document.getElementById('unInput');
-  if(inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') submitUsername(); });
+  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submitUsername(); });
   if(currentUser) activateUser(currentUser);
 });
 
 // ════════════════════════════════════════════════
-//  HEADER STATS  (نقاطك + رتبتك دائماً في الأعلى)
+//  HEADER
 // ════════════════════════════════════════════════
 function updateHeaderStats(){
   const sub = document.getElementById('headerSub');
-  if(!sub) return;
-  if(!currentUser){ sub.textContent = '٣٠ لعبة مجانية — اختر وابدأ!'; return; }
-
-  let txt = `مرحباً ${currentUser} 👋`;
-  if(myTotalScore > 0)  txt += `  •  نقاطك: <strong style="color:var(--gold)">${myTotalScore.toLocaleString()}</strong>`;
-  if(myTotalRank)       txt += `  •  رتبتك: <strong style="color:var(--cyan)">#${myTotalRank}</strong> من <strong style="color:var(--mag)">${totalPlayers}</strong>`;
+  if(!sub || !currentUser) return;
+  let txt = 'مرحباً ' + currentUser + ' 👋';
+  if(myTotalScore > 0) txt += '  •  نقاطك: <strong style="color:var(--gold)">' + myTotalScore.toLocaleString() + '</strong>';
+  if(myTotalRank)      txt += '  •  رتبتك: <strong style="color:var(--cyan)">#' + myTotalRank + '</strong> من <strong style="color:var(--mag)">' + totalPlayers + '</strong>';
   sub.innerHTML = txt;
 }
 
 // ════════════════════════════════════════════════
-//  SAVE SCORE  — فقط إذا لعب فعلاً وتجاوز أعلى نقاط
+//  SAVE SCORE
 // ════════════════════════════════════════════════
-async function saveScore(gameId, score){
-  if(!currentUser || !score || score <= 0) return;
-  try {
-    const path = `scores/${gameId}/${currentUser}`;
-    const snap = await get(ref(db, path));
-    const prev = snap.exists() ? (snap.val().score || 0) : 0;
+function saveScore(gameId, score){
+  if(!currentUser || !score || score<=0) return;
+  const path = 'scores/'+gameId+'/'+currentUser;
+  db.ref(path).once('value').then(snap=>{
+    const prev = snap.exists() ? (snap.val().score||0) : 0;
     if(score > prev){
-      await set(ref(db, path), { name: currentUser, score, updatedAt: Date.now() });
+      db.ref(path).set({ name: currentUser, score: score, updatedAt: Date.now() });
     }
-  } catch(e){ /* offline */ }
+  }).catch(()=>{});
 }
-window.saveScore = saveScore;
 
 // ════════════════════════════════════════════════
 //  REALTIME LISTENERS
 // ════════════════════════════════════════════════
 function startListeners(){
-  // عدد اللاعبين المسجلين
-  onValue(ref(db, 'users'), snap => {
+  db.ref('users').on('value', snap=>{
     totalPlayers = snap.exists() ? Object.keys(snap.val()).length : 0;
     recalcMyStats();
     updateHeaderStats();
     renderLbList();
   });
-
-  // كل النقاط
-  onValue(ref(db, 'scores'), snap => {
+  db.ref('scores').on('value', snap=>{
     lbData = {};
     if(snap.exists()){
-      snap.forEach(gameSnap => {
+      snap.forEach(gameSnap=>{
         lbData[gameSnap.key] = {};
-        gameSnap.forEach(userSnap => {
+        gameSnap.forEach(userSnap=>{
           lbData[gameSnap.key][userSnap.key] = {
-            name: userSnap.val().name,
+            name:  userSnap.val().name,
             score: userSnap.val().score
           };
         });
@@ -750,134 +738,26 @@ function startListeners(){
 }
 
 // ════════════════════════════════════════════════
-//  حساب إجمالي نقاط المستخدم الحالي ورتبته الكلية
+//  CALC RANK
 // ════════════════════════════════════════════════
 function recalcMyStats(){
-  if(!currentUser){ myTotalScore = 0; myTotalRank = null; return; }
-
-  // مجموع نقاط كل اللاعبين عبر كل الألعاب
+  if(!currentUser){ myTotalScore=0; myTotalRank=null; return; }
   const totals = {};
-  Object.values(lbData).forEach(gameObj => {
-    Object.values(gameObj).forEach(e => {
-      if(!totals[e.name]) totals[e.name] = 0;
-      totals[e.name] += e.score;
+  Object.values(lbData).forEach(gameObj=>{
+    Object.values(gameObj).forEach(e=>{
+      if(!totals[e.name]) totals[e.name]=0;
+      totals[e.name]+=e.score;
     });
   });
-
-  myTotalScore = totals[currentUser] || 0;
-
-  // رتبة المستخدم الكلية
-  const sorted = Object.entries(totals).sort((a,b) => b[1]-a[1]);
-  const idx = sorted.findIndex(([name]) => name === currentUser);
-  myTotalRank = idx >= 0 ? idx + 1 : null;
+  myTotalScore = totals[currentUser]||0;
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const idx    = sorted.findIndex(([n])=>n===currentUser);
+  myTotalRank  = idx>=0 ? idx+1 : null;
 }
 
 // ════════════════════════════════════════════════
-//  LEADERBOARD RENDER
+//  LEADERBOARD
 // ════════════════════════════════════════════════
-function buildLbTabs(){
-  const tabs = document.getElementById('lbTabs');
-  if(!tabs) return;
-  tabs.innerHTML = '';
-  const gamesList = ['all','snake','tetris','memory','reaction','guess','math','typing',
-    'whack','pong','simon','dodge','quiz','flappy','color','tictac','breakout',
-    'wordchain','clicker','minesweeper','2048','hangman','rps','bubble','speedclick',
-    'rps2','number_memory'];
-  gamesList.forEach(id => {
-    const b = document.createElement('button');
-    b.className = 'lb-tab' + (id===lbCurrentGame ? ' on' : '');
-    b.textContent = GAME_NAMES[id] || id;
-    b.onclick = () => {
-      lbCurrentGame = id;
-      document.querySelectorAll('.lb-tab').forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      renderLbList();
-    };
-    tabs.appendChild(b);
-  });
-}
-
-function renderLbList(){
-  const container = document.getElementById('lbList');
-  if(!container) return;
-
-  // بناء قائمة اللاعبين للعبة المحددة
-  let allEntries = [];
-  if(lbCurrentGame === 'all'){
-    const totals = {};
-    Object.values(lbData).forEach(gameObj => {
-      Object.values(gameObj).forEach(e => {
-        if(!totals[e.name]) totals[e.name] = 0;
-        totals[e.name] += e.score;
-      });
-    });
-    allEntries = Object.entries(totals)
-      .map(([name, score]) => ({ name, score }))
-      .sort((a,b) => b.score - a.score);
-  } else {
-    const gameObj = lbData[lbCurrentGame] || {};
-    allEntries = Object.values(gameObj).sort((a,b) => b.score - a.score);
-  }
-
-  // ترتيب المستخدم الحالي في هذه اللعبة
-  const myRankIdx = currentUser ? allEntries.findIndex(e => e.name === currentUser) : -1;
-  const myRank    = myRankIdx >= 0 ? myRankIdx + 1 : null;
-  const myEntry   = myRankIdx >= 0 ? allEntries[myRankIdx] : null;
-  const top100    = allEntries.slice(0, 100);
-
-  let html = '';
-
-  // بانر ترتيب المستخدم الحالي دائماً في الأعلى
-  if(currentUser){
-    if(myEntry){
-      const rankLabel = myRank <= 100
-        ? `#${myRank}`
-        : `#${myRank}`;
-      const rankColor = myRank === 1 ? 'var(--gold)' : myRank <= 3 ? '#c0c0c0' : 'var(--cyan)';
-      html += `<div class="lb-entry lb-me" style="margin-bottom:16px;border-color:rgba(0,245,255,.5)!important;background:rgba(0,245,255,.06)!important;">
-        <div class="lb-rank" style="color:${rankColor};font-size:1.1rem">#${myRank}</div>
-        <div class="lb-name" style="color:var(--cyan)">أنت — ${myEntry.name} 👈
-          <div style="font-size:.72rem;color:rgba(221,224,255,.4);margin-top:2px">من أصل ${totalPlayers} لاعب مسجّل</div>
-        </div>
-        <div class="lb-score" style="color:var(--gold)">${myEntry.score.toLocaleString()}</div>
-      </div>`;
-    } else {
-      html += `<div style="text-align:center;padding:12px;background:rgba(0,0,0,.2);border-radius:12px;margin-bottom:14px;font-size:.82rem;color:rgba(221,224,255,.35)">
-        لم تلعب هذه اللعبة بعد — العب وسجّل نقاطك! 🎮<br>
-        <span style="color:rgba(221,224,255,.2);font-size:.75rem">${totalPlayers} لاعب مسجّل في الموقع</span>
-      </div>`;
-    }
-  }
-
-  if(top100.length === 0){
-    container.innerHTML = html + '<div class="lb-empty">لا يوجد لاعبون بعد 🎮<br>كن أول من يسجل نقطة!</div>';
-    return;
-  }
-
-  html += `<div style="text-align:center;font-size:.72rem;color:rgba(221,224,255,.25);margin-bottom:10px;">── أعلى ${Math.min(top100.length,100)} لاعب ──</div>`;
-
-  html += top100.map((e, i) => {
-    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
-    const rankIcon  = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-    const isMe = e.name === currentUser;
-    return `<div class="lb-entry${isMe?' lb-me':''}">
-      <div class="lb-rank ${rankClass}">${rankIcon}</div>
-      <div class="lb-name">${e.name}${isMe?' 👈':''}</div>
-      <div class="lb-score">${e.score.toLocaleString()}</div>
-    </div>`;
-  }).join('');
-
-  container.innerHTML = html;
-}
-
-function renderLeaderboard(){ buildLbTabs(); renderLbList(); }
-window.renderLeaderboard = renderLeaderboard;
-
-</script>
-<script>
-// ============================================================
-// GAME NAMES MAP
-// ============================================================
 const GAME_NAMES = {
   snake:'🐍 الأفعى', tetris:'🟦 تتريس', memory:'🧠 الذاكرة',
   reaction:'⚡ ردة الفعل', guess:'🎯 خمّن', math:'➕ رياضيات',
@@ -891,26 +771,103 @@ const GAME_NAMES = {
   number_memory:'🔢 أرقام', all:'🏆 الكل مجمع'
 };
 
-// ============================================================
-// PAGE NAVIGATION
-// ============================================================
-function showPage(id, tabEl){
+function buildLbTabs(){
+  const tabs = document.getElementById('lbTabs');
+  if(!tabs) return;
+  tabs.innerHTML='';
+  const list=['all','snake','tetris','memory','reaction','guess','math','typing',
+    'whack','pong','simon','dodge','quiz','flappy','color','tictac','breakout',
+    'wordchain','clicker','minesweeper','2048','hangman','rps','bubble','speedclick',
+    'rps2','number_memory'];
+  list.forEach(id=>{
+    const b=document.createElement('button');
+    b.className='lb-tab'+(id===lbCurrentGame?' on':'');
+    b.textContent=GAME_NAMES[id]||id;
+    b.onclick=()=>{ lbCurrentGame=id; document.querySelectorAll('.lb-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderLbList(); };
+    tabs.appendChild(b);
+  });
+}
+
+function renderLbList(){
+  const container=document.getElementById('lbList');
+  if(!container) return;
+
+  let allEntries=[];
+  if(lbCurrentGame==='all'){
+    const totals={};
+    Object.values(lbData).forEach(gameObj=>{
+      Object.values(gameObj).forEach(e=>{
+        if(!totals[e.name]) totals[e.name]=0;
+        totals[e.name]+=e.score;
+      });
+    });
+    allEntries=Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  } else {
+    allEntries=Object.values(lbData[lbCurrentGame]||{}).sort((a,b)=>b.score-a.score);
+  }
+
+  const myIdx   = currentUser ? allEntries.findIndex(e=>e.name===currentUser) : -1;
+  const myRank  = myIdx>=0 ? myIdx+1 : null;
+  const myEntry = myIdx>=0 ? allEntries[myIdx] : null;
+  const top100  = allEntries.slice(0,100);
+
+  let html='';
+
+  // بطاقة المستخدم الحالي دائماً في الأعلى
+  if(currentUser){
+    if(myEntry){
+      html+=`<div class="lb-entry lb-me" style="margin-bottom:16px;border-color:rgba(0,245,255,.5)!important;background:rgba(0,245,255,.06)!important;">
+        <div class="lb-rank" style="color:var(--cyan);font-size:1rem">#${myRank}</div>
+        <div class="lb-name" style="color:var(--cyan)">أنت — ${myEntry.name} 👈
+          <div style="font-size:.7rem;color:rgba(221,224,255,.35);margin-top:2px">من أصل ${totalPlayers} لاعب مسجّل</div>
+        </div>
+        <div class="lb-score" style="color:var(--gold)">${myEntry.score.toLocaleString()}</div>
+      </div>`;
+    } else {
+      html+=`<div style="text-align:center;padding:12px;background:rgba(0,0,0,.2);border-radius:12px;margin-bottom:14px;font-size:.82rem;color:rgba(221,224,255,.35)">
+        لم تلعب هذه اللعبة بعد 🎮<br>
+        <span style="font-size:.72rem;color:rgba(221,224,255,.2)">${totalPlayers} لاعب مسجّل في الموقع</span>
+      </div>`;
+    }
+  }
+
+  if(top100.length===0){
+    container.innerHTML=html+'<div class="lb-empty">لا يوجد لاعبون بعد 🎮<br>كن أول من يسجل نقطة!</div>';
+    return;
+  }
+
+  html+=`<div style="text-align:center;font-size:.72rem;color:rgba(221,224,255,.22);margin-bottom:8px;">── أعلى ${top100.length} لاعب ──</div>`;
+  html+=top100.map((e,i)=>{
+    const rc=i===0?'r1':i===1?'r2':i===2?'r3':'';
+    const ri=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    const me=e.name===currentUser;
+    return `<div class="lb-entry${me?' lb-me':''}">
+      <div class="lb-rank ${rc}">${ri}</div>
+      <div class="lb-name">${e.name}${me?' 👈':''}</div>
+      <div class="lb-score">${e.score.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  container.innerHTML=html;
+}
+
+function renderLeaderboard(){ buildLbTabs(); renderLbList(); }
+
+// ════════════════════════════════════════════════
+//  PAGE NAV & SUPPORT
+// ════════════════════════════════════════════════
+function showPage(id,tabEl){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('on');
   if(tabEl) tabEl.classList.add('active');
   if(id==='leaderboard') renderLeaderboard();
 }
-
-// ============================================================
-// SUPPORT PAGE
-// ============================================================
 function showMoneySupport(){
-  const ov = document.getElementById('moneyPopupOverlay');
-  if(ov){ ov.style.display='flex'; }
+  const ov=document.getElementById('moneyPopupOverlay');
+  if(ov) ov.style.display='flex';
 }
 function closeMoneyPopup(e){
-  if(e && document.getElementById('moneyPopupBox').contains(e.target)) return;
+  if(e&&document.getElementById('moneyPopupBox').contains(e.target)) return;
   document.getElementById('moneyPopupOverlay').style.display='none';
 }
 
