@@ -278,6 +278,23 @@ input:focus{border-color:var(--cyan);}
 .copied-msg{color:var(--grn);font-size:.75rem;display:none;}
 .sup-thankyou{text-align:center;padding:20px 0 0;color:rgba(221,224,255,.35);font-size:.82rem;line-height:1.8;}
 .sup-thankyou strong{color:var(--mag);}
+
+/* =================== LEADERBOARD MODAL =================== */
+#lbModalOverlay{position:fixed;inset:0;background:rgba(5,5,16,.85);z-index:9990;display:none;align-items:center;justify-content:center;backdrop-filter:blur(6px);padding:16px;}
+#lbModalOverlay.open{display:flex;}
+#lbModalBox{background:var(--card);border:1px solid rgba(0,245,255,.35);border-radius:22px;padding:40px 32px 32px;max-width:400px;width:90%;text-align:center;box-shadow:0 0 80px rgba(0,245,255,.12),0 0 120px rgba(0,0,0,.5);animation:fi .3s ease;position:relative;}
+#lbCloseBtn{position:absolute;top:14px;left:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(221,224,255,.6);width:34px;height:34px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;font-family:'Tajawal',sans-serif;}
+#lbCloseBtn:hover{background:rgba(255,68,85,.2);border-color:var(--red);color:var(--red);}
+.cs-feat-list{display:flex;flex-direction:column;gap:8px;margin:18px 0 6px;}
+.cs-feat-row{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.25);border:1px solid rgba(0,245,255,.13);border-radius:13px;padding:11px 15px;text-align:right;transition:border-color .25s;}
+.cs-feat-row:hover{border-color:rgba(0,245,255,.35);}
+.cs-feat-row .cf-icon{font-size:1.4rem;flex-shrink:0;}
+.cs-feat-row .cf-text{flex:1;}
+.cs-feat-row .cf-title{font-size:.9rem;font-weight:900;color:var(--text);line-height:1.3;}
+.cs-feat-row .cf-sub{font-size:.72rem;color:rgba(221,224,255,.4);margin-top:2px;}
+.cs-feat-row.blurred{filter:blur(5px);user-select:none;pointer-events:none;opacity:.5;}
+.lb-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:rgba(221,224,255,.25);font-size:.78rem;}
+.lb-divider::before,.lb-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);}
 </style>
 </head>
 <body>
@@ -290,8 +307,7 @@ input:focus{border-color:var(--cyan);}
     <div class="un-sub">أدخل اسم المستخدم للبدء — سيتم حفظ نقاطك في لوحة الترتيب!</div>
     <input class="un-input" id="unInput" type="text" placeholder="اسمك هنا..." maxlength="20" autocomplete="off"/>
     <div class="un-err" id="unErr"></div>
-    <div style="font-size:.75rem;color:rgba(255,100,100,.6);margin-bottom:10px;line-height:1.5;">⚠️ الاسم نهائي ولا يمكن تغييره لاحقاً — اختر بعناية!</div>
-    <button class="un-btn" id="unSubmitBtn" onclick="submitUsername()">🚀 ابدأ اللعب</button>
+    <button class="un-btn" onclick="submitUsername()">🚀 ابدأ اللعب</button>
   </div>
 </div>
 
@@ -305,7 +321,7 @@ input:focus{border-color:var(--cyan);}
 <!-- =================== NAV TABS =================== -->
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="showPage('games',this)">🎮 الألعاب</button>
-  <button class="nav-tab" onclick="showPage('leaderboard',this)">🏆 الترتيب العالمي</button>
+  <button class="nav-tab" id="lbNavTab" onclick="showLeaderboardModal()">🏆 الترتيب العالمي</button>
   <button class="nav-tab" onclick="showPage('support',this)">💛 دعم المطور</button>
 </div>
 
@@ -342,7 +358,7 @@ input:focus{border-color:var(--cyan);}
       <div class="sup-card-title">دعم مادي</div>
       <div class="sup-card-desc">ساهم في استمرار المشروع مالياً</div>
     </div>
-    <a class="sup-card" href="mailto:secrets.knowledg@gmail.com?subject=دعم معنوي - ساحة الألعاب&body=مرحباً، أريد أن أشاركك كلمة دعم 💛" target="_blank">
+    <a class="sup-card" href="/cdn-cgi/l/email-protection#7b081e18091e0f08551015140c171e1f1c3b1c161a12175518141644080e19111e180f46a3d4a3c2a2fe5ba2fea3c2a2fda2f3a2f15b565ba3c8a3dca3d6a3d25ba3dca2ffa3d8a2ffa3c2a3dca3d35d19141f0246a2fea3caa3d6a3d3a3dca2f0a3f75ba3d8a3caa2f1a3d45ba3d8a2fd5ba3d8a3cfa3dca3caa2f8a2f85ba2f8a2ffa2fea3d25ba3d4a3c2a2fe5b8be4e9e0" target="_blank">
       <div class="sup-card-icon">💬</div>
       <div class="sup-card-title">دعم معنوي</div>
       <div class="sup-card-desc">أرسل كلمة تشجيع عبر البريد الإلكتروني</div>
@@ -366,6 +382,60 @@ input:focus{border-color:var(--cyan);}
     </p>
     <p style="color:rgba(221,224,255,.35);font-size:.8rem;margin-bottom:22px;">في انتظاره يسعدني استقبال دعمك المعنوي 💬</p>
     <button onclick="closeMoneyPopup()" style="background:linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,215,0,.08));border:1px solid rgba(255,215,0,.4);color:var(--gold);padding:11px 32px;border-radius:50px;font-family:'Tajawal',sans-serif;font-size:.95rem;font-weight:900;cursor:pointer;transition:all .25s;" onmouseover="this.style.background='rgba(255,215,0,.22)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(255,215,0,.2),rgba(255,215,0,.08))'">حسناً 👍</button>
+  </div>
+</div>
+
+<!-- ======= LEADERBOARD MODAL ======= -->
+<div id="lbModalOverlay" onclick="closeLbModal(event)">
+  <div id="lbModalBox">
+    <button id="lbCloseBtn" onclick="closeLbModal()">✕</button>
+
+    <div style="font-size:3.2rem;margin-bottom:10px;">🌐</div>
+    <div style="font-size:1.35rem;font-weight:900;background:linear-gradient(135deg,var(--cyan),var(--mag));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px;">لائحة الترتيب العالمي</div>
+
+    <p style="color:rgba(221,224,255,.75);font-size:.92rem;line-height:1.85;margin-bottom:4px;">
+      هذه الميزة حالياً <strong style="color:var(--cyan)">قيد التطوير</strong><br>وستتوفر قريباً إن شاء الله! 🚀
+    </p>
+
+    <div class="cs-feat-list">
+      <div class="cs-feat-row">
+        <div class="cf-icon">🏆</div>
+        <div class="cf-text">
+          <div class="cf-title">إظهار ترتيبك العالمي في الموقع</div>
+          <div class="cf-sub">شوف مكانك بين جميع اللاعبين حول العالم</div>
+        </div>
+      </div>
+      <div class="cs-feat-row">
+        <div class="cf-icon">🎯</div>
+        <div class="cf-text">
+          <div class="cf-title">مسابقات حصرية</div>
+          <div class="cf-sub">تحديات أسبوعية وموسمية لأفضل اللاعبين</div>
+        </div>
+      </div>
+      <div class="cs-feat-row">
+        <div class="cf-icon">🎁</div>
+        <div class="cf-text">
+          <div class="cf-title">مكافآت قيّمة</div>
+          <div class="cf-sub">جوائز حصرية للمتصدرين في كل لعبة</div>
+        </div>
+      </div>
+      <div class="cs-feat-row blurred">
+        <div class="cf-icon">💎</div>
+        <div class="cf-text">
+          <div class="cf-title">ميزة سرية قادمة قريباً</div>
+          <div class="cf-sub">شيء مميز جداً لم يُكشف عنه بعد...</div>
+        </div>
+      </div>
+      <div class="cs-feat-row blurred">
+        <div class="cf-icon">🔥</div>
+        <div class="cf-text">
+          <div class="cf-title">تفاجأ بالجديد قريباً</div>
+          <div class="cf-sub">ترقّب إضافات لا مثيل لها في الألعاب العربية</div>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="closeLbModal()" style="margin-top:22px;background:linear-gradient(135deg,rgba(0,245,255,.2),rgba(0,245,255,.08));border:1px solid rgba(0,245,255,.4);color:var(--cyan);padding:11px 32px;border-radius:50px;font-family:'Tajawal',sans-serif;font-size:.95rem;font-weight:900;cursor:pointer;transition:all .25s;width:100%;" onmouseover="this.style.background='rgba(0,245,255,.22)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,245,255,.2),rgba(0,245,255,.08))'">حسناً 👍</button>
   </div>
 </div>
 
@@ -530,7 +600,7 @@ input:focus{border-color:var(--cyan);}
 <div class="ib"><div><div style="opacity:.5;font-size:.72rem">نقاط</div><div class="v" id="ckSc">0</div></div><div style="text-align:center"><div style="opacity:.5;font-size:.72rem">في ثانية</div><div class="v" id="ckPS">0</div></div><div style="text-align:left"><div style="opacity:.5;font-size:.72rem">مضاعف</div><div class="v" id="ckMx">x1</div></div></div>
 <div class="ckbtn" id="ckBtn" onclick="ckClick()">🍭</div>
 <div class="upgrd" id="ckUpg"></div>
-<button class="bp" onclick="initClicker()">إعادة</button>
+<button class="bp" onclick="initClicker(true)">إعادة</button>
 </template>
 
 <template id="T_minesweeper">
@@ -608,156 +678,53 @@ input:focus{border-color:var(--cyan);}
 <button class="bp" onclick="initSC()">ابدأ / أعد</button>
 </template>
 
-<!-- Firebase SDK -->
-<!-- Firebase compat SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<script>
-// ════════════════════════════════════════════════
-//  🔥 FIREBASE CONFIG — ضع إعداداتك هنا
-// ════════════════════════════════════════════════
-const firebaseConfig = {
-  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
-  authDomain:        "REPLACE_WITH_YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "REPLACE_WITH_YOUR_PROJECT",
-  storageBucket:     "REPLACE_WITH_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "REPLACE_WITH_SENDER_ID",
-  appId:             "REPLACE_WITH_APP_ID"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+// ============================================================
+// USERNAME SYSTEM
+// ============================================================
+let currentUser = localStorage.getItem('arena_username') || null;
 
-// ════════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════════
-let currentUser   = localStorage.getItem('arena_username') || null;
-let lbCurrentGame = 'all';
-let lbData        = {};
-let totalPlayers  = 0;
-let myTotalScore  = 0;
-let myTotalRank   = null;
-
-// ════════════════════════════════════════════════
-//  USERNAME
-// ════════════════════════════════════════════════
 function submitUsername(){
-  const inp  = document.getElementById('unInput');
-  const err  = document.getElementById('unErr');
-  const btn  = document.getElementById('unSubmitBtn');
+  const inp = document.getElementById('unInput');
+  const err = document.getElementById('unErr');
   const name = inp.value.trim();
-  if(!name)         { err.textContent='❗ أدخل اسماً أولاً'; return; }
-  if(name.length<2) { err.textContent='❗ الاسم قصير جداً';  return; }
-  if(name.length>20){ err.textContent='❗ الاسم طويل جداً';  return; }
-  btn.disabled    = true;
-  btn.textContent = '⏳ جاري التحقق...';
-  err.textContent = '';
-  db.ref('users/'+name).once('value').then(snap=>{
-    if(snap.exists()){
-      err.textContent    = '❗ هذا الاسم مأخوذ! جرب اسماً آخر';
-      btn.disabled       = false;
-      btn.textContent    = '🚀 ابدأ اللعب';
-    } else {
-      db.ref('users/'+name).set({ joinedAt: Date.now() }).then(()=>{
-        localStorage.setItem('arena_username', name);
-        activateUser(name);
-      });
-    }
-  }).catch(()=>{
-    localStorage.setItem('arena_username', name);
-    activateUser(name);
-  });
+  if(!name){ err.textContent='❗ أدخل اسماً أولاً'; return; }
+  if(name.length < 2){ err.textContent='❗ الاسم قصير جداً (٢ أحرف على الأقل)'; return; }
+  if(name.length > 20){ err.textContent='❗ الاسم طويل جداً (٢٠ حرفاً كحد أقصى)'; return; }
+  // Check uniqueness in leaderboard
+  const scores = getScores();
+  const allNames = [...new Set(Object.values(scores).flatMap(arr=>arr.map(e=>e.name)))];
+  // If same user returning, allow
+  const saved = localStorage.getItem('arena_username');
+  if(saved && saved === name){
+    activateUser(name); return;
+  }
+  if(allNames.includes(name)){
+    err.textContent='❗ هذا الاسم مأخوذ! جرب اسماً آخر'; return;
+  }
+  activateUser(name);
 }
 
 function activateUser(name){
   currentUser = name;
-  document.getElementById('usernameOverlay').style.display = 'none';
-  updateHeaderStats();
-  startListeners();
+  localStorage.setItem('arena_username', name);
+  document.getElementById('usernameOverlay').style.display='none';
+  document.getElementById('headerSub').textContent = '٣٠ لعبة — مرحباً ' + name + ' 👋';
+  renderLeaderboard();
 }
 
-document.addEventListener('DOMContentLoaded', ()=>{
+// Allow pressing Enter in username input
+document.addEventListener('DOMContentLoaded',()=>{
   const inp = document.getElementById('unInput');
   if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') submitUsername(); });
-  if(currentUser) activateUser(currentUser);
+  if(currentUser){
+    activateUser(currentUser);
+  }
 });
 
-// ════════════════════════════════════════════════
-//  HEADER
-// ════════════════════════════════════════════════
-function updateHeaderStats(){
-  const sub = document.getElementById('headerSub');
-  if(!sub || !currentUser) return;
-  let txt = 'مرحباً ' + currentUser + ' 👋';
-  if(myTotalScore > 0) txt += '  •  نقاطك: <strong style="color:var(--gold)">' + myTotalScore.toLocaleString() + '</strong>';
-  if(myTotalRank)      txt += '  •  رتبتك: <strong style="color:var(--cyan)">#' + myTotalRank + '</strong> من <strong style="color:var(--mag)">' + totalPlayers + '</strong>';
-  sub.innerHTML = txt;
-}
-
-// ════════════════════════════════════════════════
-//  SAVE SCORE
-// ════════════════════════════════════════════════
-function saveScore(gameId, score){
-  if(!currentUser || !score || score<=0) return;
-  const path = 'scores/'+gameId+'/'+currentUser;
-  db.ref(path).once('value').then(snap=>{
-    const prev = snap.exists() ? (snap.val().score||0) : 0;
-    if(score > prev){
-      db.ref(path).set({ name: currentUser, score: score, updatedAt: Date.now() });
-    }
-  }).catch(()=>{});
-}
-
-// ════════════════════════════════════════════════
-//  REALTIME LISTENERS
-// ════════════════════════════════════════════════
-function startListeners(){
-  db.ref('users').on('value', snap=>{
-    totalPlayers = snap.exists() ? Object.keys(snap.val()).length : 0;
-    recalcMyStats();
-    updateHeaderStats();
-    renderLbList();
-  });
-  db.ref('scores').on('value', snap=>{
-    lbData = {};
-    if(snap.exists()){
-      snap.forEach(gameSnap=>{
-        lbData[gameSnap.key] = {};
-        gameSnap.forEach(userSnap=>{
-          lbData[gameSnap.key][userSnap.key] = {
-            name:  userSnap.val().name,
-            score: userSnap.val().score
-          };
-        });
-      });
-    }
-    recalcMyStats();
-    updateHeaderStats();
-    renderLbList();
-  });
-}
-
-// ════════════════════════════════════════════════
-//  CALC RANK
-// ════════════════════════════════════════════════
-function recalcMyStats(){
-  if(!currentUser){ myTotalScore=0; myTotalRank=null; return; }
-  const totals = {};
-  Object.values(lbData).forEach(gameObj=>{
-    Object.values(gameObj).forEach(e=>{
-      if(!totals[e.name]) totals[e.name]=0;
-      totals[e.name]+=e.score;
-    });
-  });
-  myTotalScore = totals[currentUser]||0;
-  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-  const idx    = sorted.findIndex(([n])=>n===currentUser);
-  myTotalRank  = idx>=0 ? idx+1 : null;
-}
-
-// ════════════════════════════════════════════════
-//  LEADERBOARD
-// ════════════════════════════════════════════════
+// ============================================================
+// LEADERBOARD SYSTEM  (localStorage-based, per-game)
+// ============================================================
 const GAME_NAMES = {
   snake:'🐍 الأفعى', tetris:'🟦 تتريس', memory:'🧠 الذاكرة',
   reaction:'⚡ ردة الفعل', guess:'🎯 خمّن', math:'➕ رياضيات',
@@ -771,103 +738,217 @@ const GAME_NAMES = {
   number_memory:'🔢 أرقام', all:'🏆 الكل مجمع'
 };
 
+function getScores(){
+  try{ return JSON.parse(localStorage.getItem('arena_scores')||'{}'); }
+  catch(e){ return {}; }
+}
+
+function saveScore(gameId, score){
+  if(!currentUser || !score || score <= 0) return;
+  const scores = getScores();
+  if(!scores[gameId]) scores[gameId]=[];
+  // Update or add user entry
+  const idx = scores[gameId].findIndex(e=>e.name===currentUser);
+  if(idx >= 0){
+    if(score > scores[gameId][idx].score) scores[gameId][idx].score = score;
+  } else {
+    scores[gameId].push({name: currentUser, score});
+  }
+  // Keep top 100 sorted
+  scores[gameId].sort((a,b)=>b.score-a.score);
+  scores[gameId] = scores[gameId].slice(0,100);
+  localStorage.setItem('arena_scores', JSON.stringify(scores));
+  renderLeaderboard();
+}
+
+let lbCurrentGame = 'all';
+
 function buildLbTabs(){
   const tabs = document.getElementById('lbTabs');
   if(!tabs) return;
   tabs.innerHTML='';
-  const list=['all','snake','tetris','memory','reaction','guess','math','typing',
+  const gamesList = ['all','snake','tetris','memory','reaction','guess','math','typing',
     'whack','pong','simon','dodge','quiz','flappy','color','tictac','breakout',
     'wordchain','clicker','minesweeper','2048','hangman','rps','bubble','speedclick',
     'rps2','number_memory'];
-  list.forEach(id=>{
-    const b=document.createElement('button');
-    b.className='lb-tab'+(id===lbCurrentGame?' on':'');
-    b.textContent=GAME_NAMES[id]||id;
-    b.onclick=()=>{ lbCurrentGame=id; document.querySelectorAll('.lb-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderLbList(); };
+  gamesList.forEach(id=>{
+    const b = document.createElement('button');
+    b.className = 'lb-tab' + (id===lbCurrentGame?' on':'');
+    b.textContent = GAME_NAMES[id]||id;
+    b.onclick = ()=>{ lbCurrentGame=id; document.querySelectorAll('.lb-tab').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderLbList(); };
     tabs.appendChild(b);
   });
 }
 
 function renderLbList(){
-  const container=document.getElementById('lbList');
+  const container = document.getElementById('lbList');
   if(!container) return;
-
-  let allEntries=[];
-  if(lbCurrentGame==='all'){
-    const totals={};
-    Object.values(lbData).forEach(gameObj=>{
-      Object.values(gameObj).forEach(e=>{
-        if(!totals[e.name]) totals[e.name]=0;
-        totals[e.name]+=e.score;
-      });
-    });
-    allEntries=Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  const scores = getScores();
+  let allEntries = [];
+  if(lbCurrentGame === 'all'){
+    const totals = {};
+    Object.values(scores).forEach(arr=>arr.forEach(e=>{
+      if(!totals[e.name]) totals[e.name]=0;
+      totals[e.name]+=e.score;
+    }));
+    allEntries = Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
   } else {
-    allEntries=Object.values(lbData[lbCurrentGame]||{}).sort((a,b)=>b.score-a.score);
+    allEntries = (scores[lbCurrentGame]||[]).slice().sort((a,b)=>b.score-a.score);
   }
 
-  const myIdx   = currentUser ? allEntries.findIndex(e=>e.name===currentUser) : -1;
-  const myRank  = myIdx>=0 ? myIdx+1 : null;
-  const myEntry = myIdx>=0 ? allEntries[myIdx] : null;
-  const top100  = allEntries.slice(0,100);
+  // Find current user rank (full list)
+  const myRankIdx = currentUser ? allEntries.findIndex(e=>e.name===currentUser) : -1;
+  const myRank = myRankIdx >= 0 ? myRankIdx + 1 : null;
+  const myEntry = myRankIdx >= 0 ? allEntries[myRankIdx] : null;
+  const totalPlayers = allEntries.length;
 
-  let html='';
+  // Top 100 for display
+  const entries = allEntries.slice(0,100);
 
-  // بطاقة المستخدم الحالي دائماً في الأعلى
-  if(currentUser){
-    if(myEntry){
-      html+=`<div class="lb-entry lb-me" style="margin-bottom:16px;border-color:rgba(0,245,255,.5)!important;background:rgba(0,245,255,.06)!important;">
-        <div class="lb-rank" style="color:var(--cyan);font-size:1rem">#${myRank}</div>
-        <div class="lb-name" style="color:var(--cyan)">أنت — ${myEntry.name} 👈
-          <div style="font-size:.7rem;color:rgba(221,224,255,.35);margin-top:2px">من أصل ${totalPlayers} لاعب مسجّل</div>
-        </div>
-        <div class="lb-score" style="color:var(--gold)">${myEntry.score.toLocaleString()}</div>
-      </div>`;
-    } else {
-      html+=`<div style="text-align:center;padding:12px;background:rgba(0,0,0,.2);border-radius:12px;margin-bottom:14px;font-size:.82rem;color:rgba(221,224,255,.35)">
-        لم تلعب هذه اللعبة بعد 🎮<br>
-        <span style="font-size:.72rem;color:rgba(221,224,255,.2)">${totalPlayers} لاعب مسجّل في الموقع</span>
-      </div>`;
-    }
+  let html = '';
+
+  // Show user's rank banner at top if outside top 100 or not in list
+  if(myEntry && (myRankIdx >= 100)){
+    html += `<div class="lb-entry lb-me" style="margin-bottom:14px;border-color:rgba(255,215,0,.5)!important;background:rgba(255,215,0,.07)!important;">
+      <div class="lb-rank" style="color:var(--gold)">#${myRank}</div>
+      <div class="lb-name">${myEntry.name} 👈 <span style="font-size:.72rem;color:rgba(221,224,255,.4)">ترتيبك من ${totalPlayers} لاعب</span></div>
+      <div class="lb-score">${myEntry.score.toLocaleString()}</div>
+    </div>
+    <div style="text-align:center;font-size:.75rem;color:rgba(221,224,255,.3);margin-bottom:12px;">── أعلى 100 لاعب ──</div>`;
+  } else if(myEntry){
+    html += `<div style="text-align:center;font-size:.78rem;color:rgba(221,224,255,.35);margin-bottom:10px;">ترتيبك: <strong style="color:var(--gold)">#${myRank}</strong> من <strong style="color:var(--cyan)">${totalPlayers}</strong> لاعب</div>`;
   }
 
-  if(top100.length===0){
-    container.innerHTML=html+'<div class="lb-empty">لا يوجد لاعبون بعد 🎮<br>كن أول من يسجل نقطة!</div>';
+  if(entries.length===0){
+    container.innerHTML = html + '<div class="lb-empty">لا يوجد لاعبون بعد 🎮<br>كن أول من يسجل نقطة!</div>';
     return;
   }
 
-  html+=`<div style="text-align:center;font-size:.72rem;color:rgba(221,224,255,.22);margin-bottom:8px;">── أعلى ${top100.length} لاعب ──</div>`;
-  html+=top100.map((e,i)=>{
-    const rc=i===0?'r1':i===1?'r2':i===2?'r3':'';
-    const ri=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
-    const me=e.name===currentUser;
-    return `<div class="lb-entry${me?' lb-me':''}">
-      <div class="lb-rank ${rc}">${ri}</div>
-      <div class="lb-name">${e.name}${me?' 👈':''}</div>
+  html += entries.map((e,i)=>{
+    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
+    const rankIcon = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    const isMe = e.name === currentUser;
+    return `<div class="lb-entry${isMe?' lb-me':''}">
+      <div class="lb-rank ${rankClass}">${rankIcon}</div>
+      <div class="lb-name">${e.name}${isMe?' 👈':''}</div>
       <div class="lb-score">${e.score.toLocaleString()}</div>
     </div>`;
   }).join('');
-  container.innerHTML=html;
+
+  container.innerHTML = html;
 }
 
-function renderLeaderboard(){ buildLbTabs(); renderLbList(); }
+function renderLeaderboard(){
+  buildLbTabs();
+  renderLbList();
+}
 
-// ════════════════════════════════════════════════
-//  PAGE NAV & SUPPORT
-// ════════════════════════════════════════════════
-function showPage(id,tabEl){
+// ============================================================
+// LEADERBOARD MODAL
+// ============================================================
+let lbModalCurrentGame = 'all';
+
+function showLeaderboardModal(){
+  document.getElementById('lbModalOverlay').classList.add('open');
+  buildLbModalTabs();
+  renderLbModalList();
+}
+
+function closeLbModal(e){
+  if(e && document.getElementById('lbModalBox').contains(e.target)) return;
+  document.getElementById('lbModalOverlay').classList.remove('open');
+}
+
+function buildLbModalTabs(){
+  const tabs = document.getElementById('lbModalTabs');
+  if(!tabs) return;
+  tabs.innerHTML='';
+  const gamesList = ['all','snake','tetris','memory','reaction','guess','math','typing',
+    'whack','pong','simon','dodge','quiz','flappy','color','tictac','breakout',
+    'wordchain','clicker','minesweeper','2048','hangman','rps','bubble','speedclick',
+    'rps2','number_memory'];
+  gamesList.forEach(id=>{
+    const b = document.createElement('button');
+    b.className = 'lb-tab' + (id===lbModalCurrentGame?' on':'');
+    b.textContent = GAME_NAMES[id]||id;
+    b.onclick = ()=>{
+      lbModalCurrentGame=id;
+      document.querySelectorAll('#lbModalTabs .lb-tab').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on');
+      renderLbModalList();
+    };
+    tabs.appendChild(b);
+  });
+}
+
+function renderLbModalList(){
+  const container = document.getElementById('lbModalList');
+  if(!container) return;
+  const scores = getScores();
+  let allEntries = [];
+  if(lbModalCurrentGame === 'all'){
+    const totals = {};
+    Object.values(scores).forEach(arr=>arr.forEach(e=>{
+      if(!totals[e.name]) totals[e.name]=0;
+      totals[e.name]+=e.score;
+    }));
+    allEntries = Object.entries(totals).map(([name,score])=>({name,score})).sort((a,b)=>b.score-a.score);
+  } else {
+    allEntries = (scores[lbModalCurrentGame]||[]).slice().sort((a,b)=>b.score-a.score);
+  }
+  const myRankIdx = currentUser ? allEntries.findIndex(e=>e.name===currentUser) : -1;
+  const myRank = myRankIdx >= 0 ? myRankIdx + 1 : null;
+  const myEntry = myRankIdx >= 0 ? allEntries[myRankIdx] : null;
+  const totalPlayers = allEntries.length;
+  const entries = allEntries.slice(0,100);
+  let html = '';
+  if(myEntry && myRankIdx >= 100){
+    html += `<div class="lb-entry lb-me" style="margin-bottom:14px;border-color:rgba(255,215,0,.5)!important;background:rgba(255,215,0,.07)!important;">
+      <div class="lb-rank" style="color:var(--gold)">#${myRank}</div>
+      <div class="lb-name">${myEntry.name} 👈 <span style="font-size:.72rem;color:rgba(221,224,255,.4)">من ${totalPlayers} لاعب</span></div>
+      <div class="lb-score">${myEntry.score.toLocaleString()}</div>
+    </div>
+    <div style="text-align:center;font-size:.75rem;color:rgba(221,224,255,.3);margin-bottom:12px;">── أعلى 100 لاعب ──</div>`;
+  } else if(myEntry){
+    html += `<div style="text-align:center;font-size:.78rem;color:rgba(221,224,255,.35);margin-bottom:10px;">ترتيبك: <strong style="color:var(--gold)">#${myRank}</strong> من <strong style="color:var(--cyan)">${totalPlayers}</strong> لاعب</div>`;
+  }
+  if(entries.length===0){
+    container.innerHTML = html + '<div class="lb-empty">لا يوجد لاعبون بعد 🎮<br>كن أول من يسجل نقطة!</div>';
+    return;
+  }
+  html += entries.map((e,i)=>{
+    const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
+    const rankIcon = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1);
+    const isMe = e.name === currentUser;
+    return `<div class="lb-entry${isMe?' lb-me':''}">
+      <div class="lb-rank ${rankClass}">${rankIcon}</div>
+      <div class="lb-name">${e.name}${isMe?' 👈':''}</div>
+      <div class="lb-score">${e.score.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+  container.innerHTML = html;
+}
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function showPage(id, tabEl){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('on');
   if(tabEl) tabEl.classList.add('active');
   if(id==='leaderboard') renderLeaderboard();
 }
+
+// ============================================================
+// SUPPORT PAGE
+// ============================================================
 function showMoneySupport(){
-  const ov=document.getElementById('moneyPopupOverlay');
-  if(ov) ov.style.display='flex';
+  const ov = document.getElementById('moneyPopupOverlay');
+  if(ov){ ov.style.display='flex'; }
 }
 function closeMoneyPopup(e){
-  if(e&&document.getElementById('moneyPopupBox').contains(e.target)) return;
+  if(e && document.getElementById('moneyPopupBox').contains(e.target)) return;
   document.getElementById('moneyPopupOverlay').style.display='none';
 }
 
@@ -1303,10 +1384,13 @@ function wcSub(){if(!wcAct)return;const i=document.getElementById('wcIn');const 
 // 19. CLICKER
 // ============================================================
 let ckPts=0,ckPPC=1,ckAPS=0,ckIv;
+const CK_BASE_COSTS=[50,100,500,1000];
 const CKUPS=[{n:'🍭 سكر',d:'×2/ضغطة',c:50,f:()=>ckPPC*=2,t:0,m:5},{n:'🤖 روبوت',d:'+1/ثانية',c:100,f:()=>ckAPS+=1,t:0,m:10},{n:'⚡ طاقة',d:'×3/ضغطة',c:500,f:()=>ckPPC*=3,t:0,m:3},{n:'🌟 نجمة',d:'+5/ثانية',c:1000,f:()=>ckAPS+=5,t:0,m:5}];
-function initClicker(){ckPts=0;ckPPC=1;ckAPS=0;CKUPS.forEach(u=>{u.t=0;u.c=[50,100,500,1000][[...CKUPS].indexOf(u)];});clearInterval(ckIv);ckIv=setInterval(()=>{if(ckAPS>0){ckPts+=ckAPS;ckRefresh();}},1000);ckRefresh();}
-function ckClick(){ckPts+=ckPPC;sfxCoin();const b=document.getElementById('ckBtn');if(b){b.style.transform='scale(.88)';setTimeout(()=>b.style.transform='',100);const f=document.createElement('div');f.textContent='+'+ckPPC;f.style.cssText='position:absolute;top:10px;right:50%;color:#ffd700;font-weight:900;font-size:1.1rem;pointer-events:none;animation:floatUp .8s ease forwards;z-index:99;';b.parentElement.style.position='relative';b.parentElement.appendChild(f);setTimeout(()=>f.remove(),800);}ckRefresh();}
-function ckRefresh(){el('ckSc',~~ckPts);el('ckPS',ckAPS);el('ckMx','x'+ckPPC);const c=document.getElementById('ckUpg');if(!c)return;c.innerHTML='';CKUPS.forEach(u=>{const b=document.createElement('button');b.className='up';b.disabled=ckPts<u.c||u.t>=u.m;b.innerHTML=`<div>${u.n} (${u.t}/${u.m})</div><div style="font-size:.7rem;opacity:.55">${u.d}</div><div class="up-cost">${u.c}💰</div>`;b.onclick=()=>{if(ckPts>=u.c&&u.t<u.m){ckPts-=u.c;u.f();u.t++;u.c=~~(u.c*2.4);sfxLevelUp();ckRefresh();}};c.appendChild(b);});}
+function ckSaveState(){try{const st={pts:ckPts,ups:CKUPS.map(u=>({t:u.t,c:u.c}))};localStorage.setItem('arena_clicker',JSON.stringify(st));}catch(e){}}
+function ckLoadState(){try{const raw=localStorage.getItem('arena_clicker');if(!raw)return false;const st=JSON.parse(raw);ckPts=st.pts||0;ckPPC=1;ckAPS=0;CKUPS.forEach((u,i)=>{u.t=st.ups[i]?.t||0;u.c=st.ups[i]?.c||CK_BASE_COSTS[i];for(let j=0;j<u.t;j++)u.f();});return true;}catch(e){return false;}}
+function initClicker(reset=false){if(reset){localStorage.removeItem('arena_clicker');ckPts=0;ckPPC=1;ckAPS=0;CKUPS.forEach((u,i)=>{u.t=0;u.c=CK_BASE_COSTS[i];});}else{const loaded=ckLoadState();if(!loaded){ckPts=0;ckPPC=1;ckAPS=0;CKUPS.forEach((u,i)=>{u.t=0;u.c=CK_BASE_COSTS[i];});}}clearInterval(ckIv);ckIv=setInterval(()=>{if(ckAPS>0){ckPts+=ckAPS;ckSaveState();ckRefresh();}},1000);ckRefresh();}
+function ckClick(){ckPts+=ckPPC;sfxCoin();ckSaveState();const b=document.getElementById('ckBtn');if(b){b.style.transform='scale(.88)';setTimeout(()=>b.style.transform='',100);const f=document.createElement('div');f.textContent='+'+ckPPC;f.style.cssText='position:absolute;top:10px;right:50%;color:#ffd700;font-weight:900;font-size:1.1rem;pointer-events:none;animation:floatUp .8s ease forwards;z-index:99;';b.parentElement.style.position='relative';b.parentElement.appendChild(f);setTimeout(()=>f.remove(),800);}ckRefresh();}
+function ckRefresh(){el('ckSc',~~ckPts);el('ckPS',ckAPS);el('ckMx','x'+ckPPC);const c=document.getElementById('ckUpg');if(!c)return;c.innerHTML='';CKUPS.forEach(u=>{const b=document.createElement('button');b.className='up';b.disabled=ckPts<u.c||u.t>=u.m;b.innerHTML=`<div>${u.n} (${u.t}/${u.m})</div><div style="font-size:.7rem;opacity:.55">${u.d}</div><div class="up-cost">${u.c}💰</div>`;b.onclick=()=>{if(ckPts>=u.c&&u.t<u.m){ckPts-=u.c;u.f();u.t++;u.c=~~(u.c*2.4);sfxLevelUp();ckSaveState();ckRefresh();}};c.appendChild(b);});}
 
 // ============================================================
 // 20. MINESWEEPER
@@ -1478,11 +1562,9 @@ window.addEventListener('load',()=>{
     ctx.fillStyle='rgba(0,245,255,.45)';ctx.font='bold 15px Tajawal';ctx.textAlign='center';
     ctx.fillText('اضغط "ابدأ" للعب',c.width/2,c.height/2);
   });
-  activeGame='snake';
+  // Load clicker saved state
+  initClicker();
 });
-
-// floatUp animation
-const fs=document.createElement('style');fs.textContent='@keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-55px)}}';document.head.appendChild(fs);
 </script>
 </body>
 </html>
